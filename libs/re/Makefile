@@ -9,17 +9,18 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=re
-PKG_VERSION:=0.6.0
+PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://www.creytiv.com/pub
-PKG_HASH:=0e97bcb5cc8f84d6920aa78de24c7d4bf271c5ddefbb650848e0db50afe98131
+PKG_SOURCE_URL:=https://codeload.github.com/baresip/re/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=bf0abfc511b7278462e7d54aaae39e7231b9f35423d5026c8210a322c7c8ef2f
 
 PKG_LICENSE:=BSD-3-Clause
 PKG_LICENSE_FILES:=docs/COPYING
 PKG_MAINTAINER:=Jiri Slachta <jiri@slachta.eu>
 
+PKG_BUILD_PARALLEL:=1
 PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
@@ -30,7 +31,7 @@ define Package/libre
   CATEGORY:=Libraries
   DEPENDS:=+libopenssl +zlib
   TITLE:=Generic library for real-time communications with async IO support
-  URL:=http://www.creytiv.com
+  URL:=https://github.com/baresip/re
 endef
 
 # re.mk is used for this and all related packages (rem, restund and baresip).

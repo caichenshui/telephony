@@ -9,12 +9,12 @@ include $(TOPDIR)/rules.mk
 
 AST_MAJOR_VERSION:=16
 PKG_NAME:=asterisk$(AST_MAJOR_VERSION)
-PKG_VERSION:=$(AST_MAJOR_VERSION).3.0
-PKG_RELEASE:=8
+PKG_VERSION:=$(AST_MAJOR_VERSION).13.0
+PKG_RELEASE:=1
 
 PKG_SOURCE:=asterisk-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://downloads.asterisk.org/pub/telephony/asterisk/releases
-PKG_HASH:=8b22ee7c0c0b5557eff273118703c6fce8b743c12bbeb679ed86b3f197444a8e
+PKG_HASH:=e95238c355f5ef837009659e7422dcd7100ac7675b30ae8c49614ad32052d206
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/asterisk-$(PKG_VERSION)
 PKG_BUILD_DEPENDS:=libxml2/host
@@ -43,7 +43,9 @@ MODULES_AVAILABLE:= \
 	app-agent-pool \
 	app-alarmreceiver \
 	app-amd \
+	app-attended-transfer \
 	app-authenticate \
+	app-blind-transfer \
 	app-bridgeaddchan \
 	app-bridgewait \
 	app-celgenuserevent \
@@ -332,7 +334,7 @@ endef
 
 define Package/$(PKG_NAME)/install/conffile
 	$(INSTALL_DIR) $(1)/etc/asterisk
-	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/asterisk/$(2) $(1)/etc/asterisk/
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/etc/asterisk/$(2) $(1)/etc/asterisk/
 endef
 
 define Package/$(PKG_NAME)/install/lib
@@ -352,7 +354,7 @@ endef
 
 define Package/$(PKG_NAME)/install/util-conffile
 	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/asterisk/$(2) $(1)/etc
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/etc/asterisk/$(2) $(1)/etc
 endef
 
 define Package/$(PKG_NAME)/config
@@ -494,9 +496,12 @@ $(call Package/$(PKG_NAME)/install/sbin,$(1),safe_asterisk)
 $(call Package/$(PKG_NAME)/install/sbin,$(1),astgenkey)
 $(foreach m,$(AST_CFG_FILES),$(call Package/$(PKG_NAME)/install/conffile,$(1),$(m));)
 $(foreach m,$(AST_EMB_MODULES),$(call Package/$(PKG_NAME)/install/module,$(1),$(m));)
-	$(INSTALL_DIR) $(1)/usr/share/asterisk/sounds/
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/usr/share/asterisk/agi-bin
+	$(INSTALL_DIR) $(1)/usr/share/asterisk/firmware/iax
+	$(INSTALL_DIR) $(1)/usr/share/asterisk/keys
+	$(INSTALL_DIR) $(1)/usr/share/asterisk/sounds
 	$(INSTALL_BIN) ./files/asterisk.init $(1)/etc/init.d/asterisk
 	$(INSTALL_CONF) ./files/asterisk.conf $(1)/etc/config/asterisk
 endef
@@ -640,9 +645,6 @@ CONFIGURE_ARGS+= \
 	--with-iksemel="$(STAGING_DIR)/usr"
 endif
 
-CONFIGURE_VARS += \
-	ac_cv_path_ac_pt_CONFIG_LIBXML2=$(STAGING_DIR)/host/bin/xml2-config
-
 ifneq ($(CONFIG_PACKAGE_$(PKG_NAME)-res-calendar-caldav)$(CONFIG_PACKAGE_$(PKG_NAME)-res-calendar-ews)$(CONFIG_PACKAGE_$(PKG_NAME)-res-calendar-exchange)$(CONFIG_PACKAGE_$(PKG_NAME)-res-calendar-icalendar),)
 CONFIGURE_VARS += \
 	ac_cv_path_CONFIG_NEON=$(STAGING_DIR)/usr/bin/neon-config
@@ -669,12 +671,11 @@ MAKE_FLAGS+= \
 
 AST_MENUSELECT_OPTS = \
 	--without-newt \
-	--without-curses \
-	--with-libxml2="$(STAGING_DIR_HOSTPKG)/usr"
+	--without-curses
 
 define Build/menuselect
 	CC="$(HOSTCC)" \
-	CFLAGS="$(HOST_CFLAGS) -I$(STAGING_DIR_HOSTPKG)/include/libxml2" \
+	CFLAGS="$(HOST_CFLAGS)" \
 	LDFLAGS="$(HOST_LDFLAGS) -Wl,-rpath,$(STAGING_DIR_HOSTPKG)/lib" \
 	$(MAKE) -C "$(PKG_BUILD_DIR)/menuselect"
 endef
@@ -685,10 +686,9 @@ define Build/Configure
 	$(call Build/Configure/Default)
 	cd $(PKG_BUILD_DIR)/menuselect; \
 		CC="$(HOSTCC)" \
-		CFLAGS="$(HOST_CFLAGS) -I$(STAGING_DIR_HOSTPKG)/include/libxml2" \
+		CFLAGS="$(HOST_CFLAGS)" \
 		CONFIG_SITE= \
 		LDFLAGS="$(HOST_LDFLAGS) -Wl,-rpath,$(STAGING_DIR_HOSTPKG)/lib" \
-		ac_cv_path_ac_pt_CONFIG_LIBXML2=$(STAGING_DIR_HOSTPKG)/bin/xml2-config \
 		./configure \
 		$(HOST_CONFIGURE_ARGS) \
 		$(AST_MENUSELECT_OPTS)
@@ -757,7 +757,9 @@ $(eval $(call BuildAsteriskModule,app-adsiprog,ADSI programming,Asterisk ADSI pr
 $(eval $(call BuildAsteriskModule,app-agent-pool,Call center agent pool,Call center agent pool applications.,,agents.conf,app_agent_pool,,))
 $(eval $(call BuildAsteriskModule,app-alarmreceiver,Alarm receiver,Alarm receiver for Asterisk.,,,app_alarmreceiver,,))
 $(eval $(call BuildAsteriskModule,app-amd,Answering machine detection,Answering Machine Detection application.,,amd.conf,app_amd,,))
+$(eval $(call BuildAsteriskModule,app-attended-transfer,Attended transfer,Queues up an attended transfer to a given extension.,,,app_attended_transfer,,))
 $(eval $(call BuildAsteriskModule,app-authenticate,Authenticate commands,Authentication application.,,,app_authenticate,,))
+$(eval $(call BuildAsteriskModule,app-blind-transfer,Blind transfer,Redirects all channels currently bridged to the caller channel to a specified destination.,,,app_blind_transfer,,))
 $(eval $(call BuildAsteriskModule,app-bridgeaddchan,Bridge add channel,Bridge-add-channel application.,,,app_bridgeaddchan,,))
 $(eval $(call BuildAsteriskModule,app-bridgewait,Holding bridge,Application to place a channel into a holding bridge.,+$(PKG_NAME)-bridge-holding,,app_bridgewait,,))
 $(eval $(call BuildAsteriskModule,app-celgenuserevent,User-defined CEL event,Generate a user defined CEL event.,,,app_celgenuserevent,,))
@@ -921,7 +923,7 @@ $(eval $(call BuildAsteriskModule,odbc,ODBC,ODBC support.,+libpthread +libc +uni
 $(eval $(call BuildAsteriskModule,pbx-ael,Asterisk Extension Logic,Asterisk Extension Language compiler.,+$(PKG_NAME)-res-ael-share,extensions.ael,pbx_ael,,))
 $(eval $(call BuildAsteriskModule,pbx-dundi,Dundi,Distributed Universal Number Discovery.,,dundi.conf,pbx_dundi,,))
 $(eval $(call BuildAsteriskModule,pbx-loopback,Loopback switch,Loopback switch.,,,pbx_loopback,,))
-$(eval $(call BuildAsteriskModule,pbx-lua,Lua,Lua PBX switch.,+liblua5.3,extensions.lua,pbx_lua,,))
+$(eval $(call BuildAsteriskModule,pbx-lua,Lua,Lua PBX switch.,+liblua,extensions.lua,pbx_lua,,))
 $(eval $(call BuildAsteriskModule,pbx-realtime,Realtime Switch,Realtime switch.,,,pbx_realtime,,))
 $(eval $(call BuildAsteriskModule,pbx-spool,Call Spool,Outgoing spool support.,,,pbx_spool,,))
 $(eval $(call BuildAsteriskModule,pgsql,PostgreSQL,PostgreSQL support.,+libpq,cel_pgsql.conf cdr_pgsql.conf res_pgsql.conf,cel_pgsql cdr_pgsql res_config_pgsql,,))
@@ -943,7 +945,7 @@ $(eval $(call BuildAsteriskModule,res-ari-playbacks,RESTful playback control res
 $(eval $(call BuildAsteriskModule,res-ari-recordings,RESTful recording resources,RESTful API module - recording resources.,+$(PKG_NAME)-res-ari +$(PKG_NAME)-res-ari-model +$(PKG_NAME)-res-stasis-recording,,res_ari_recordings,,))
 $(eval $(call BuildAsteriskModule,res-ari-sounds,RESTful sound resources,RESTful API module - sound resources.,+$(PKG_NAME)-res-ari +$(PKG_NAME)-res-ari-model +$(PKG_NAME)-res-stasis,,res_ari_sounds,))
 $(eval $(call BuildAsteriskModule,res-calendar,Calendar API,Asterisk calendar integration.,,calendar.conf,res_calendar,,))
-$(eval $(call BuildAsteriskModule,res-calendar-caldav,CalDAV calendar,Asterisk CalDAV calendar integration.,+$(PKG_NAME)-res-calendar +libical +libneon +libxml2,,res_calendar_caldav,,))
+$(eval $(call BuildAsteriskModule,res-calendar-caldav,CalDAV calendar,Asterisk CalDAV calendar integration.,+$(PKG_NAME)-res-calendar +libical +libneon,,res_calendar_caldav,,))
 $(eval $(call BuildAsteriskModule,res-calendar-ews,EWS calendar,Asterisk MS Exchange Web Service calendar integration.,+$(PKG_NAME)-res-calendar +libneon,,res_calendar_ews,,))
 $(eval $(call BuildAsteriskModule,res-calendar-exchange,Exchange calendar,Asterisk MS Exchange calendar integration.,+$(PKG_NAME)-res-calendar +libical +libiksemel +libneon,,res_calendar_exchange,,))
 $(eval $(call BuildAsteriskModule,res-calendar-icalendar,iCalendar calendar,Asterisk iCalendar .ics file integration.,+$(PKG_NAME)-res-calendar +libical +libneon,,res_calendar_icalendar,,))
